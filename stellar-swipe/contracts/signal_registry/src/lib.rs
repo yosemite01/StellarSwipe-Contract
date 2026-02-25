@@ -4,6 +4,7 @@ mod admin;
 mod analytics;
 mod categories;
 mod collaboration;
+mod contests;
 mod errors;
 mod events;
 mod expiry;
@@ -25,10 +26,10 @@ use admin::{
     AdminConfig, PauseInfo,
 };
 use categories::{RiskLevel, SignalCategory};
-use errors::{AdminError, TemplateError};
+use errors::{AdminError, TemplateError, ContestError};
 pub use leaderboard::{get_leaderboard as get_leaderboard_internal, LeaderboardMetric, ProviderLeaderboard};
 use soroban_sdk::{contract, contractimpl, contracttype, Address, Bytes, Env, Map, String, Vec};
-use stellarswipe_common::{validate_asset_pair as validate_asset_pair_common, AssetPairError};
+use stellar_swipe_common::{validate_asset_pair as validate_asset_pair_common, AssetPairError};
 use templates::{SignalTemplate, DEFAULT_TEMPLATE_EXPIRY_HOURS};
 use types::{
     Asset, FeeBreakdown, ImportResultView, ProviderPerformance, Signal, SignalAction,
@@ -42,6 +43,9 @@ use combos::{
     ComponentSignal,
 };
 use errors::ComboError;
+use contests::{
+    Contest, ContestEntry, ContestMetric, ContestStatus,
+};
 
 const MAX_EXPIRY_SECONDS: u64 = 30 * 24 * 60 * 60;
 
@@ -337,6 +341,9 @@ impl SignalRegistry {
             // Collaboration field
             is_collaborative: false,
         };
+
+        // Auto-enter signal into active contests (before moving signal)
+        let _ = contests::auto_enter_signal(env, &signal);
 
         // Store signal
         let mut signals = Self::get_signals_map(env);
@@ -1177,6 +1184,51 @@ impl SignalRegistry {
     pub fn get_combo_executions(env: Env, combo_id: u64) -> Vec<ComboExecution> {
         get_combo_executions_pub(&env, combo_id)
     }
+
+    /* =========================
+       CONTEST FUNCTIONS
+    ========================== */
+
+    /// Create a new contest
+    pub fn create_contest(
+        env: Env,
+        admin: Address,
+        name: String,
+        start_time: u64,
+        end_time: u64,
+        metric: ContestMetric,
+        min_signals: u32,
+        prize_pool: i128,
+    ) -> Result<u64, ContestError> {
+        admin.require_auth();
+        require_not_paused(&env)?;
+        contests::create_contest(&env, name, start_time, end_time, metric, min_signals, prize_pool)
+    }
+
+    /// Finalize a contest and distribute prizes
+    pub fn finalize_contest(env: Env, contest_id: u64) -> Result<Vec<Address>, ContestError> {
+        contests::finalize_contest(&env, contest_id)
+    }
+
+    /// Get contest details
+    pub fn get_contest(env: Env, contest_id: u64) -> Result<Contest, ContestError> {
+        contests::get_contest(&env, contest_id)
+    }
+
+    /// Get all active contests
+    pub fn get_active_contests(env: Env) -> Vec<u64> {
+        contests::get_active_contests(&env)
+    }
+
+    /// Get contest leaderboard
+    pub fn get_contest_leaderboard(env: Env, contest_id: u64) -> Result<Vec<ContestEntry>, ContestError> {
+        contests::get_contest_leaderboard(&env, contest_id)
+    }
+
+    /// Get provider's prize for a contest
+    pub fn get_provider_prize(env: Env, contest_id: u64, provider: Address) -> i128 {
+        contests::get_provider_prize(&env, contest_id, provider)
+    }
 }
 
 /*mod test;
@@ -1187,3 +1239,4 @@ mod test_import;
 mod test_performance;
 mod test_collaboration; */
 mod test_scheduling;
+mod test_contests;

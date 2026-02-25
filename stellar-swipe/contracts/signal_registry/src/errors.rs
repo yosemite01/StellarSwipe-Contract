@@ -95,12 +95,15 @@ pub enum CollaborationError {
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
- feat/signal-export
 pub enum ExportError {
     UnsupportedFormat = 700,
     NoDataInRange = 701,
     ExportTooLarge = 702,
-=======
+}
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
 pub enum ComboError {
     ComboNotFound = 600,
     SignalNotFound = 601,
@@ -114,5 +117,16 @@ pub enum ComboError {
     InvalidConditionReference = 609,
     ComboNotActive = 610,
     InvalidAmount = 611,
- main
+}
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum ContestError {
+    ContestNotFound = 800,
+    InvalidTimeRange = 801,
+    InvalidPrizePool = 802,
+    ContestNotEnded = 803,
+    AlreadyFinalized = 804,
+    NotQualified = 805,
 }
